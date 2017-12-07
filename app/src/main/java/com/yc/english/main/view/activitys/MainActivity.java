@@ -15,7 +15,7 @@ import com.yc.english.main.contract.MainContract;
 import com.yc.english.main.presenter.MainPresenter;
 import com.yc.english.main.view.fragments.IndexFragment;
 import com.yc.english.main.view.wdigets.TabBar;
-import com.yc.english.setting.view.fragments.MyFragmentNew;
+import com.yc.english.setting.view.fragments.MyFragment;
 import com.yc.english.weixin.views.fragments.CourseTypeFragment;
 
 import butterknife.BindView;
@@ -85,7 +85,7 @@ public class MainActivity extends BaseActivity<MainPresenter> implements MainCon
 
     private IndexFragment mIndexFragment;
     private CourseTypeFragment mClassMainFragment;
-    private MyFragmentNew mMyFragment;
+    private MyFragment mMyFragment;
 
     class FragmentAdapter extends FragmentStatePagerAdapter {
         public FragmentAdapter(FragmentManager fm) {
@@ -106,7 +106,7 @@ public class MainActivity extends BaseActivity<MainPresenter> implements MainCon
                 return mClassMainFragment;
             } else if (position == 2) {
                 if (mMyFragment == null) {
-                    mMyFragment = new MyFragmentNew();
+                    mMyFragment = new MyFragment();
                 }
                 return mMyFragment;
             }

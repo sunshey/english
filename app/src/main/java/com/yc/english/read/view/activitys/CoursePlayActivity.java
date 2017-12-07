@@ -1,5 +1,6 @@
 package com.yc.english.read.view.activitys;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.LinearLayoutManager;
@@ -20,15 +21,20 @@ import com.jakewharton.rxbinding.view.RxView;
 import com.yc.english.R;
 import com.yc.english.base.helper.TipsHelper;
 import com.yc.english.base.utils.WakeLockUtils;
+import com.yc.english.base.view.AlertDialog;
 import com.yc.english.base.view.FullScreenActivity;
 import com.yc.english.base.view.StateView;
+import com.yc.english.main.hepler.UserInfoHelper;
 import com.yc.english.read.common.SpeechUtils;
 import com.yc.english.read.contract.CoursePlayContract;
 import com.yc.english.read.model.domain.EnglishCourseInfo;
 import com.yc.english.read.model.domain.EnglishCourseInfoList;
+import com.yc.english.read.model.domain.UnitInfo;
 import com.yc.english.read.presenter.CoursePlayPresenter;
 import com.yc.english.read.view.adapter.ReadCourseItemClickAdapter;
+import com.yc.english.setting.view.activitys.BuyVipActivity;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import butterknife.BindView;
@@ -97,6 +103,9 @@ public class CoursePlayActivity extends FullScreenActivity<CoursePlayPresenter> 
     private int currentPage = 1;
 
     private boolean isNext = false;
+    private int position;
+    private List<UnitInfo> unitInfoList;
+    private boolean isRead;
 
     @Override
     public int getLayoutId() {
@@ -108,15 +117,12 @@ public class CoursePlayActivity extends FullScreenActivity<CoursePlayPresenter> 
 
         Bundle bundle = getIntent().getExtras();
         if (bundle != null) {
-            unitId = bundle.getString("unit_id");
-            unitTitle = bundle.getString("unit_title");
-            lastUnitIds = bundle.getString("last_unit_ids");
-            lastUnitTitles = bundle.getString("last_unit_titles");
-            if (!StringUtils.isEmpty(lastUnitIds)) {
-                nextUnitIds = lastUnitIds.split(",");
-            }
-            if (!StringUtils.isEmpty(lastUnitTitles)) {
-                nextUnitTitles = lastUnitTitles.split("#");
+            position = bundle.getInt("position");
+            unitInfoList = bundle.getParcelableArrayList("unitInfoList");
+            if (unitInfoList != null) {
+                UnitInfo unitInfo = unitInfoList.get(position);
+                unitId = unitInfo.getId();
+                unitTitle = unitInfo.getName();
             }
         }
 
@@ -152,16 +158,47 @@ public class CoursePlayActivity extends FullScreenActivity<CoursePlayPresenter> 
         RxView.clicks(mNextUnitImageView).throttleFirst(200, TimeUnit.MILLISECONDS).subscribe(new Action1<Void>() {
             @Override
             public void call(Void aVoid) {
-                if (nextUnitIds != null && currentUnitPosition < nextUnitIds.length) {
+                if (unitInfoList != null && position + 1 < unitInfoList.size()) {
+                    UnitInfo unitInfo = unitInfoList.get(position + 1);
+                    position++;
+                    //1是免费，2是收费
+                    if (unitInfo.getFree() == 1) {
+                        isRead = true;
+                    } else {
+                        if (UserInfoHelper.getUserInfo() != null) {
+                            if (UserInfoHelper.getUserInfo().getIsVip() == 1) {
+                                isRead = true;
+                            } else {
+                                isRead = false;
+                            }
+                        } else {
+                            UserInfoHelper.isGotoLogin(CoursePlayActivity.this);
+                            return;
+                        }
+                    }
+                    if (!isRead) {
+                        final AlertDialog alertDialog = new AlertDialog(CoursePlayActivity.this);
+                        alertDialog.setDesc("请购买会员使用点读功能？");
+                        alertDialog.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                alertDialog.dismiss();
+                                Intent intent = new Intent(CoursePlayActivity.this, BuyVipActivity.class);
+                                startActivity(intent);
+                            }
+                        });
+                        alertDialog.show();
+                        return;
+                    }
+
                     isNext = true;
                     resetPlayState();
-                    if (nextUnitTitles != null && currentUnitPosition < nextUnitTitles.length) {
-                        mToolbar.setTitle(nextUnitTitles[currentUnitPosition]);
-                    }
-                    unitId = nextUnitIds[currentUnitPosition];
-                    currentUnitPosition++;
+                    mToolbar.setTitle(unitInfo.getName());
+                    unitId = unitInfo.getId();
                     currentPage = 1;
                     mPresenter.getCourseListByUnitId(currentPage, 0, unitId);
+
+
                 } else {
                     TipsHelper.tips(CoursePlayActivity.this, "已经是最后一个单元");
                 }
@@ -251,6 +288,7 @@ public class CoursePlayActivity extends FullScreenActivity<CoursePlayPresenter> 
             com.yc.english.base.utils.SpeechUtils.setAppids(this);
         }
     }
+
 
     protected boolean isSlideToBottom(RecyclerView recyclerView) {
         if (recyclerView == null) return false;

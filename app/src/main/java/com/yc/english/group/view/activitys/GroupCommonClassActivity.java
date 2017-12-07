@@ -27,6 +27,7 @@ import com.yc.english.group.view.activitys.teacher.GroupVerifyActivity;
 import com.yc.english.group.view.adapter.GroupGroupAdapter;
 import com.yc.english.main.hepler.UserInfoHelper;
 import com.yc.english.main.model.domain.UserInfo;
+import com.yc.english.setting.view.activitys.BuyVipActivity;
 import com.yc.english.union.contract.UnionCommonListContract;
 import com.yc.english.union.presenter.UnionCommonListPresenter;
 
@@ -82,11 +83,17 @@ public class GroupCommonClassActivity extends FullScreenActivity<UnionCommonList
             public void onJoin(ClassInfo classInfo) {
 
                 if (!UserInfoHelper.isGotoLogin(GroupCommonClassActivity.this)) {
-                    int result = SPUtils.getInstance().getInt(classInfo.getClass_id() + UserInfoHelper.getUserInfo().getUid());
-                    if (result == 1) {
-                        setMode(classInfo);
+                    if (UserInfoHelper.getUserInfo().getIsVip() == 1) {
+
+                        int result = SPUtils.getInstance().getInt(classInfo.getClass_id() + UserInfoHelper.getUserInfo().getUid());
+                        if (result == 1) {
+                            setMode(classInfo);
+                        } else {
+                            mPresenter.isGroupMember(classInfo);
+                        }
                     } else {
-                        mPresenter.isGroupMember(classInfo);
+                        Intent intent = new Intent(GroupCommonClassActivity.this, BuyVipActivity.class);
+                        startActivity(intent);
                     }
                 }
             }

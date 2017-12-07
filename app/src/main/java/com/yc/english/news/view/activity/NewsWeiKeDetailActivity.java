@@ -1,5 +1,6 @@
 package com.yc.english.news.view.activity;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Paint;
 import android.hardware.Sensor;
@@ -15,9 +16,13 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.blankj.utilcode.util.LogUtils;
+import com.blankj.utilcode.util.NetworkUtils;
 import com.blankj.utilcode.util.ScreenUtils;
 import com.blankj.utilcode.util.ToastUtils;
 import com.bumptech.glide.Glide;
+import com.hwangjr.rxbus.annotation.Subscribe;
+import com.hwangjr.rxbus.annotation.Tag;
+import com.hwangjr.rxbus.thread.EventThread;
 import com.jakewharton.rxbinding.view.RxView;
 import com.kk.securityhttp.net.contains.HttpConfig;
 import com.yc.english.R;
@@ -29,6 +34,8 @@ import com.yc.english.base.view.SharePopupWindow;
 import com.yc.english.base.view.StateView;
 import com.yc.english.group.view.activitys.GroupPictureDetailActivity;
 import com.yc.english.main.hepler.UserInfoHelper;
+import com.yc.english.main.model.domain.Constant;
+import com.yc.english.main.model.domain.UserInfo;
 import com.yc.english.news.bean.CourseInfoWrapper;
 import com.yc.english.news.contract.NewsDetailContract;
 import com.yc.english.news.presenter.NewsDetailPresenter;
@@ -38,15 +45,15 @@ import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 import butterknife.BindView;
-import fm.jiecao.jcvideoplayer_lib.JCVideoPlayer;
-import fm.jiecao.jcvideoplayer_lib.JCVideoPlayerStandard;
+import cn.jzvd.JZVideoPlayer;
+import cn.jzvd.JZVideoPlayerStandard;
 import rx.functions.Action1;
 
 /**
  * Created by wanglin  on 2017/9/6 08:32.
  */
 
-public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresenter> implements NewsDetailContract.View, View.OnClickListener {
+public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresenter> implements NewsDetailContract.View {
 
     private static final String TAG = "NewsDetailActivity";
 
@@ -54,7 +61,7 @@ public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresen
     StateView stateView;
 
     @BindView(R.id.mJCVideoPlayer)
-    JCVideoPlayerStandard mJCVideoPlayer;
+    JZVideoPlayerStandard mJCVideoPlayer;
 
     @BindView(R.id.webView)
     WebView webView;
@@ -88,7 +95,6 @@ public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresen
 
     private String title;
 
-    private int screenHeight;
 
     private String id;
 
@@ -96,7 +102,7 @@ public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresen
 
     private CourseInfo currentCourseInfo;
 
-    private boolean isPlay = true;
+    private UserInfo userInfo;
 
     @Override
     public int getLayoutId() {
@@ -118,10 +124,10 @@ public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresen
             id = getIntent().getStringExtra("id");
         }
 
-        screenHeight = ScreenUtils.getScreenHeight();
+        mPresenter.getWeiKeDetail(id, UserInfoHelper.getUserInfo() != null ? UserInfoHelper.getUserInfo().getUid() : "");
         initListener();
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        mSensorEventListener = new JCVideoPlayer.JCAutoFullscreenListener();
+        mSensorEventListener = new JZVideoPlayer.JZAutoFullscreenListener();
 
         RxView.clicks(mAddToCartLayout).throttleFirst(200, TimeUnit.MILLISECONDS).subscribe(new Action1<Void>() {
             @Override
@@ -158,6 +164,7 @@ public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresen
 
             }
         });
+        userInfo = UserInfoHelper.getUserInfo();
 
     }
 
@@ -190,18 +197,6 @@ public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresen
         });
     }
 
-    private String makeBody(String data) {
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("<html><head><meta charset=\"utf-8\" /><meta content=\"yes\" name=\"apple-mobile-web-app-capable\" />\n" +
-                "    <meta content=\"yes\" name=\"apple-touch-fullscreen\" />\n" +
-                "    <meta content=\"telephone=no,email=no\" name=\"format-detection\" />\n" +
-                "    <meta name=\"App-Config\" content=\"fullscreen=yes,useHistoryState=yes,transition=yes\" /><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no\" />");
-        sb.append("<style> html,body{overflow:hidden;} img { width:100%; height:auto; overflow:hidden;}</style></head><body>");
-        sb.append(data);
-        sb.append("</body></html>");
-        return sb.toString();
-    }
 
     private void initWebView(final CourseInfoWrapper data) {
 
@@ -222,7 +217,7 @@ public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresen
         webSettings.setDefaultTextEncodingName("utf-8");//设置编码格式
         webSettings.setBlockNetworkImage(true);//设置是否加载网络图片 true 为不加载 false 为加载
 
-        String body = makeBody(data.getInfo().getBody());
+        String body = data.getInfo().getBody();
         webView.loadDataWithBaseURL(null, body, "text/html", "utf-8", null);
 
         webView.setWebViewClient(new WebViewClient() {
@@ -255,19 +250,40 @@ public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresen
      */
     private void playVideo(String url, String imgUrl) {
         mJCVideoPlayer.setVisibility(View.VISIBLE);
-        mJCVideoPlayer.setUp(url, JCVideoPlayerStandard.SCREEN_LAYOUT_NORMAL);
+        mJCVideoPlayer.setUp(url, JZVideoPlayerStandard.SCREEN_WINDOW_NORMAL);
         Glide.with(this).load(imgUrl).into(mJCVideoPlayer.thumbImageView);
-        mJCVideoPlayer.battery_level.setVisibility(View.GONE);
         mJCVideoPlayer.backButton.setVisibility(View.GONE);
+        mJCVideoPlayer.tinyBackImageView.setVisibility(View.GONE);
+        mJCVideoPlayer.batteryLevel.setVisibility(View.GONE);
 
+
+        if (judgeVip()) {
+            if (NetworkUtils.getNetworkType() == NetworkUtils.NetworkType.NETWORK_WIFI)
+                mJCVideoPlayer.startVideo();
+            else {
+//                mJCVideoPlayer.thumbImageView.setOnClickListener(this);
+//                mJCVideoPlayer.startButton.setOnClickListener(this);
+                click();
+            }
+        } else {
+//            mJCVideoPlayer.thumbImageView.setOnClickListener(NewsWeiKeDetailActivity.this);
+//            mJCVideoPlayer.startButton.setOnClickListener(NewsWeiKeDetailActivity.this);
+            click();
+        }
+
+
+    }
+
+    private boolean judgeVip() {
+        boolean isPlay = true;
         if (currentCourseInfo != null) {
 
             //收费
             if (currentCourseInfo.getIsPay() == 0) {
                 //未购买
                 if (currentCourseInfo.getUserHas() == 0) {
-                    if (UserInfoHelper.getUserInfo() != null) {
-                        if (UserInfoHelper.getUserInfo().getIsVip() == 0) {
+                    if (userInfo != null) {
+                        if (userInfo.getIsVip() == 0) {
                             isPlay = false;
                         } else {
                             if (currentCourseInfo.getIs_vip() == 0) {
@@ -289,9 +305,18 @@ public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresen
             }
 
         }
-        mJCVideoPlayer.thumbImageView.setOnClickListener(this);
-        mJCVideoPlayer.startButton.setOnClickListener(this);
+        return isPlay;
+    }
 
+    @Subscribe(
+            thread = EventThread.MAIN_THREAD,
+            tags = {
+                    @Tag(Constant.COMMUNITY_ACTIVITY_REFRESH)
+            }
+    )
+    public void login(String loginInfo) {
+        userInfo = UserInfoHelper.getUserInfo();
+        judgeVip();
     }
 
     @Override
@@ -327,35 +352,58 @@ public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresen
 
     private ArrayList<String> imageList = new ArrayList<>();
 
-    @Override
-    public void onClick(View v) {
-        if (UserInfoHelper.getUserInfo() != null) {
-            if (isPlay) {
+
+    private void showBuyDialog() {
+
+        final AlertDialog alertDialog = new AlertDialog(NewsWeiKeDetailActivity.this);
+        alertDialog.setDesc("未购买此课程，是否马上购买？");
+        alertDialog.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                alertDialog.dismiss();
+
+                currentCourseInfo.setUserId(UserInfoHelper.getUserInfo().getUid());
+                Intent intent = new Intent(NewsWeiKeDetailActivity.this, ConfirmOrderActivity.class);
+                ArrayList<CourseInfo> goodsList = new ArrayList<>();
+                goodsList.add(currentCourseInfo);
+                intent.putExtra("total_price", currentCourseInfo.getMPrice());
+                intent.putParcelableArrayListExtra("goods_list", goodsList);
+                startActivity(intent);
+
+
+            }
+        });
+        alertDialog.show();
+    }
+
+    private void click() {
+        RxView.clicks(mJCVideoPlayer.thumbImageView).throttleFirst(1000, TimeUnit.MICROSECONDS).subscribe(new Action1<Void>() {
+            @Override
+            public void call(Void aVoid) {
+                startOrBuy();
+            }
+        });
+        RxView.clicks(mJCVideoPlayer.startButton).throttleFirst(1000, TimeUnit.MICROSECONDS).subscribe(new Action1<Void>() {
+            @Override
+            public void call(Void aVoid) {
+                startOrBuy();
+            }
+        });
+    }
+
+    private void startOrBuy() {
+        if (userInfo != null) {
+            if (judgeVip()) {
                 mJCVideoPlayer.startVideo();
             } else {
-                final AlertDialog alertDialog = new AlertDialog(NewsWeiKeDetailActivity.this);
-                alertDialog.setDesc("未购买此课程，是否马上购买？");
-                alertDialog.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        alertDialog.dismiss();
-
-                        currentCourseInfo.setUserId(UserInfoHelper.getUserInfo().getUid());
-                        Intent intent = new Intent(NewsWeiKeDetailActivity.this, ConfirmOrderActivity.class);
-                        ArrayList<CourseInfo> goodsList = new ArrayList<>();
-                        goodsList.add(currentCourseInfo);
-                        intent.putExtra("total_price", currentCourseInfo.getMPrice());
-                        intent.putParcelableArrayListExtra("goods_list", goodsList);
-                        startActivity(intent);
-
-                    }
-                });
-                alertDialog.show();
+                showBuyDialog();
             }
         } else {
             UserInfoHelper.isGotoLogin(NewsWeiKeDetailActivity.this);
         }
     }
+
 
     private class JavascriptInterface {
 
@@ -374,7 +422,7 @@ public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresen
 
     }
 
-    private JCVideoPlayer.JCAutoFullscreenListener mSensorEventListener;
+    private JZVideoPlayer.JZAutoFullscreenListener mSensorEventListener;
 
     private SensorManager mSensorManager;
 
@@ -382,8 +430,8 @@ public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresen
     @Override
     protected void onResume() {
         super.onResume();
-        isPlay = true;
-        mPresenter.getWeiKeDetail(id, UserInfoHelper.getUserInfo() != null ? UserInfoHelper.getUserInfo().getUid() : "");
+//        isPlay = true;
+
 
         Sensor accelerometerSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mSensorManager.registerListener(mSensorEventListener, accelerometerSensor, SensorManager.SENSOR_DELAY_NORMAL);
@@ -393,9 +441,9 @@ public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresen
     @Override
     protected void onPause() {
         super.onPause();
-        JCVideoPlayer.releaseAllVideos();
+        JZVideoPlayer.releaseAllVideos();
         mSensorManager.unregisterListener(mSensorEventListener);
-        JCVideoPlayer.clearSavedProgress(this, null);
+        JZVideoPlayer.clearSavedProgress(this, null);
     }
 
     @Override
@@ -412,7 +460,7 @@ public class NewsWeiKeDetailActivity extends FullScreenActivity<NewsDetailPresen
 
     @Override
     public void onBackPressed() {
-        if (JCVideoPlayer.backPress()) {
+        if (JZVideoPlayer.backPress()) {
             return;
         }
         super.onBackPressed();

@@ -16,6 +16,7 @@ import com.yc.english.base.helper.TipsHelper;
 import com.yc.english.base.view.FullScreenActivity;
 import com.yc.english.base.view.StateView;
 import com.yc.english.main.hepler.UserInfoHelper;
+import com.yc.english.main.model.domain.Constant;
 import com.yc.english.news.model.domain.OrderGood;
 import com.yc.english.news.model.domain.OrderParams;
 import com.yc.english.news.utils.OrderConstant;
@@ -228,6 +229,7 @@ public class BuyVipActivity extends FullScreenActivity<GoodsListPresenter> imple
         int use_time_Limit = Integer.parseInt(goodInfo.getUse_time_limit());
         long vip_end_time = date.getTime() + use_time_Limit * 30 * (Config.MS_IN_A_DAY);
         UserInfoHelper.getUserInfo().setVip_end_time(vip_end_time / 1000);
+        RxBus.get().post(Constant.COMMUNITY_ACTIVITY_REFRESH, "form pay");
         finish();
     }
 

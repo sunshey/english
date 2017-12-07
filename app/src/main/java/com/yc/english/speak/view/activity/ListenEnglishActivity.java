@@ -16,9 +16,11 @@ import com.blankj.utilcode.util.SDCardUtils;
 import com.blankj.utilcode.util.StringUtils;
 import com.blankj.utilcode.util.TimeUtils;
 import com.blankj.utilcode.util.ToastUtils;
+import com.bumptech.glide.Glide;
 import com.liulishuo.filedownloader.BaseDownloadTask;
 import com.liulishuo.filedownloader.FileDownloadListener;
 import com.liulishuo.filedownloader.FileDownloader;
+import com.mikhaellopez.circularprogressbar.CircularProgressBar;
 import com.yc.english.R;
 import com.yc.english.base.view.FullScreenActivity;
 import com.yc.english.speak.contract.ListenEnglishContract;
@@ -29,6 +31,7 @@ import com.yc.english.speak.model.bean.SpeakAndReadItemInfo;
 import com.yc.english.speak.presenter.ListenEnglishPresenter;
 import com.yc.english.speak.presenter.LyricViewPresenter;
 import com.yc.english.speak.service.MusicPlayService;
+import com.yc.english.speak.view.wdigets.DownloadProgressDialog;
 import com.yc.english.speak.view.wdigets.LyricView;
 
 import java.io.File;
@@ -67,6 +70,9 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
 
     @BindView(R.id.btn_next)
     ImageView mNext;
+
+    @BindView(R.id.iv_loading)
+    ImageView mIvLoading;
 
     private LyricViewPresenter mLyricViewPresenter;
 
@@ -127,6 +133,7 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
         FileDownloader.setup(this);
         mPresenter = new ListenEnglishPresenter(this, this);
         mPresenter.getListenEnglishDetail(currentItemInfo.getId());
+
     }
 
     public boolean getPrevInfo() {
@@ -279,7 +286,8 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
                     FileDownloader.getImpl().create(currentAudioUrl).setPath(audioPath, false).setListener(new FileDownloadListener() {
                         @Override
                         protected void pending(BaseDownloadTask task, int soFarBytes, int totalBytes) {
-                            ToastUtils.showLong("开始下载资源文件");
+//                            ToastUtils.showLong("开始下载资源文件");
+                            Glide.with(ListenEnglishActivity.this).load(R.mipmap.download_loading).into(mIvLoading);
                             total = totalBytes / 1024 / 1024;
                         }
 
@@ -287,6 +295,7 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
                         protected void progress(BaseDownloadTask task, int soFarBytes, int totalBytes) {
                             total = totalBytes / 1024 / 1024;
                             progresses = soFarBytes / 1024 / 1024;
+
                             Log.e("progress total", "progress total--->" + total + "progress--->" + progresses);
                         }
 
@@ -294,7 +303,8 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
                         protected void completed(BaseDownloadTask task) {
                             progresses = total;
                             Log.e("completed progress", " completed progress--->" + progresses);
-                            ToastUtils.showLong("资源文件下载完成");
+//                            ToastUtils.showLong("资源文件下载完成");
+
                             downAudioLrcFile();//继续下载资源词句文件
                         }
 
@@ -339,7 +349,7 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
                     FileDownloader.getImpl().create(currentAudioLrcUrl).setPath(lrcPath, false).setListener(new FileDownloadListener() {
                         @Override
                         protected void pending(BaseDownloadTask task, int soFarBytes, int totalBytes) {
-                            ToastUtils.showLong("开始下载资源文件");
+//                            ToastUtils.showLong("开始下载资源文件");
                             total = totalBytes / 1024 / 1024;
                         }
 
@@ -354,9 +364,10 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
                         protected void completed(BaseDownloadTask task) {
                             progresses = total;
                             Log.e("completed progress", " completed progress--->" + progresses);
-                            ToastUtils.showLong("下载完成");
+//                            ToastUtils.showLong("下载完成");
                             isDownSuccess = true;
-
+                            Glide.with(ListenEnglishActivity.this).clear(mIvLoading);
+                            mIvLoading.setVisibility(View.GONE);
                             mLyricViewPresenter = new LyricViewPresenter(ListenEnglishActivity.this, ListenEnglishActivity.this, audioFile.getAbsolutePath());
                             startService(mPlayService);
                         }

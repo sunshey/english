@@ -2,33 +2,39 @@ package com.yc.english.setting.view.fragments;
 
 import android.content.Intent;
 import android.graphics.Color;
+import android.net.Uri;
+import android.support.design.widget.AppBarLayout;
+import android.support.design.widget.CollapsingToolbarLayout;
+import android.support.design.widget.CoordinatorLayout;
 import android.support.v4.content.ContextCompat;
-import android.view.View;
+import android.support.v4.widget.NestedScrollView;
+import android.support.v7.widget.Toolbar;
+import android.view.Gravity;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.blankj.utilcode.util.ActivityUtils;
 import com.blankj.utilcode.util.StringUtils;
-import com.blankj.utilcode.util.ToastUtils;
 import com.hwangjr.rxbus.annotation.Subscribe;
 import com.hwangjr.rxbus.annotation.Tag;
 import com.hwangjr.rxbus.thread.EventThread;
 import com.jakewharton.rxbinding.view.RxView;
 import com.yc.english.R;
 import com.yc.english.base.helper.GlideHelper;
+import com.yc.english.base.helper.TipsHelper;
 import com.yc.english.base.utils.QQUtils;
-import com.yc.english.base.view.AlertDialog;
+import com.yc.english.base.view.BaseFragment;
+import com.yc.english.base.view.QQqunDialog;
 import com.yc.english.base.view.SharePopupWindow;
-import com.yc.english.base.view.ToolbarFragment;
 import com.yc.english.main.hepler.UserInfoHelper;
 import com.yc.english.main.model.domain.Constant;
 import com.yc.english.main.model.domain.UserInfo;
-import com.yc.english.news.view.widget.NewsScrollView;
 import com.yc.english.setting.contract.MyContract;
 import com.yc.english.setting.model.bean.MyOrderInfo;
 import com.yc.english.setting.presenter.MyPresenter;
 import com.yc.english.setting.view.activitys.BuyVipActivity;
 import com.yc.english.setting.view.activitys.FeedbackActivity;
+import com.yc.english.setting.view.activitys.MyOrderActivity;
 import com.yc.english.setting.view.activitys.PersonCenterActivity;
 import com.yc.english.setting.view.activitys.SettingActivity;
 import com.yc.english.setting.view.activitys.VipEquitiesActivity;
@@ -45,7 +51,7 @@ import rx.functions.Action1;
  * Created by zhangkai on 2017/7/24.
  */
 
-public class MyFragment extends ToolbarFragment<MyPresenter> implements MyContract.View {
+public class MyFragment extends BaseFragment<MyPresenter> implements MyContract.View, QQqunDialog.QQqunClick {
 
     @BindView(R.id.iv_avatar)
     ImageView mAvatarImageView;
@@ -78,14 +84,62 @@ public class MyFragment extends ToolbarFragment<MyPresenter> implements MyContra
     MenuItemView mSettingMenuItemView;
 
     @BindView(R.id.sv_content)
-    NewsScrollView mContentScrollView;
+    NestedScrollView mContentScrollView;
+    @BindView(R.id.collapsingToolbarLayout)
+    CollapsingToolbarLayout mCollapsingToolbarLayout;
+
+    @BindView(R.id.toolbar)
+    Toolbar toolbar;
+    @BindView(R.id.appbar_layout)
+    AppBarLayout mAppBarLayout;
+    @BindView(R.id.miv_my_order)
+    MenuItemView mOrderMenuItemView;
+
+
+    QQqunDialog qqunDialog;
+    @BindView(R.id.coordinatorLayout)
+    CoordinatorLayout coordinatorLayout;
+
+    @BindView(R.id.tv_support)
+    TextView mTvSupport;
+
 
     @Override
     public void init() {
-        super.init();
+//        getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
         mPresenter = new MyPresenter(getActivity(), this);
 
-        mToolbar.setTitle("用户中心");
+        qqunDialog = new QQqunDialog(getActivity());
+        qqunDialog.setQqunClick(this);
+
+        mCollapsingToolbarLayout.setCollapsedTitleGravity(Gravity.CENTER);//设置收缩后标题的位置
+
+//        coordinatorLayout.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+//            @Override
+//
+//            public void onGlobalLayout() {
+//                DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
+//            }
+//        });
+
+
+//        AppBarLayout.LayoutParams layoutParams = (AppBarLayout.LayoutParams) mAppBarLayout.getChildAt(0).getLayoutParams();
+//        layoutParams.setScrollFlags(0);
+
+        mAppBarLayout.addOnOffsetChangedListener(new AppBarLayout.OnOffsetChangedListener() {
+            @Override
+            public void onOffsetChanged(AppBarLayout appBarLayout, int verticalOffset) {
+//                LogUtils.e(verticalOffset + "---" + appBarLayout.getHeight() + "---" + toolbar.getHeight());
+
+                if (verticalOffset <= -appBarLayout.getHeight() / 2) {
+                    mCollapsingToolbarLayout.setTitle("用户中心");
+                } else {
+                    mCollapsingToolbarLayout.setTitle("");
+                }
+
+            }
+        });
+
 
         RxView.clicks(mAvatarImageView).throttleFirst(200, TimeUnit.MILLISECONDS).subscribe(new Action1<Void>() {
             @Override
@@ -126,7 +180,16 @@ public class MyFragment extends ToolbarFragment<MyPresenter> implements MyContra
         RxView.clicks(mMarketMenuItemView).throttleFirst(200, TimeUnit.MILLISECONDS).subscribe(new Action1<Void>() {
             @Override
             public void call(Void aVoid) {
-                ToastUtils.showLong("应用市场点评");
+
+                try {
+                    Uri uri = Uri.parse("market://details?id=" + getActivity().getPackageName());
+                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    TipsHelper.tips(getActivity(), "你手机安装的应用市场没有上线该应用，请前往其他应用市场进行点评");
+                }
             }
         });
 
@@ -141,15 +204,8 @@ public class MyFragment extends ToolbarFragment<MyPresenter> implements MyContra
         RxView.clicks(mQQMenuItemView).throttleFirst(200, TimeUnit.MILLISECONDS).subscribe(new Action1<Void>() {
             @Override
             public void call(Void aVoid) {
-                AlertDialog alertDialog = new AlertDialog(getActivity());
-                alertDialog.setDesc("打开QQ群与客服进行沟通？");
-                alertDialog.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        QQUtils.joinQQGroup(getActivity(), "C9GzeOgLm4zrKerAk3Hr8gUiWsOhMzR7");
-                    }
-                });
-                alertDialog.show();
+
+                qqunDialog.show();
             }
         });
 
@@ -180,21 +236,26 @@ public class MyFragment extends ToolbarFragment<MyPresenter> implements MyContra
                 startActivity(intent);
             }
         });
-
-        mContentScrollView.setOnScrollChangeListener(new NewsScrollView.onScrollChangeListener() {
+        RxView.clicks(mOrderMenuItemView).throttleFirst(200, TimeUnit.MILLISECONDS).subscribe(new Action1<Void>() {
             @Override
-            public void onScrollChange(int l, int t, int oldl, int oldt) {
-//                mToolbar.setTranslationY(-t);
-                mAvatarImageView.setTranslationY(t);
-                mNickNameTextView.setTranslationY(t * 2 / 3);
+            public void call(Void aVoid) {
+                Intent intent = new Intent(getActivity(), MyOrderActivity.class);
+                startActivity(intent);
             }
         });
+
+
     }
 
-
     @Override
-    public boolean isInstallToolbar() {
-        return false;
+    public void onResume() {
+        super.onResume();
+        if (UserInfoHelper.getUserInfo()!=null&&UserInfoHelper.getUserInfo().getIsVip()==1){
+            mBuyVipMenuItemView.setTitle("会员信息");
+        }else {
+            mBuyVipMenuItemView.setTitle("开通会员");
+        }
+
     }
 
     @Override
@@ -249,6 +310,21 @@ public class MyFragment extends ToolbarFragment<MyPresenter> implements MyContra
     }
 
     @Override
+    public void showLoadingDialog(String msg) {
+
+    }
+
+    @Override
+    public void dismissLoadingDialog() {
+
+    }
+
+    @Override
+    public void finish() {
+
+    }
+
+    @Override
     public void showNoNet() {
 
     }
@@ -259,22 +335,18 @@ public class MyFragment extends ToolbarFragment<MyPresenter> implements MyContra
     }
 
     @Override
-    public void showLoadingDialog(String msg) {
-
-    }
-
-    @Override
-    public void finish() {
-
-    }
-
-    @Override
     public void showLoading() {
 
     }
 
     @Override
-    public void dismissLoadingDialog() {
-
+    public void xiaoxueClick() {
+        QQUtils.joinQQGroup(getActivity(), "C9GzeOgLm4zrKerAk3Hr8gUiWsOhMzR7");
     }
+
+    @Override
+    public void zhongxueClick() {
+        QQUtils.joinQQZhongXueGroup(getActivity(), "wuzu_LXD28r_DJy7INWx-F4WkuhtzDhE");
+    }
+
 }

@@ -222,7 +222,7 @@ public class IndexFragment extends BaseFragment<IndexPresenter> implements Index
 //                Intent intent = new Intent(getActivity(), UnionMainActivity.class);
 //                startActivity(intent);
                 //todo
-                TipsHelper.tips(getActivity(), "正在开发中...");
+//                TipsHelper.tips(getActivity(), "正在开发中...");
             }
         });
 

@@ -2,6 +2,7 @@ package com.yc.english.speak.view.adapter;
 
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.view.ViewGroup;
@@ -48,32 +49,25 @@ public class SpeakEnglishItemAdapter extends BaseQuickAdapter<SpeakAndReadItemIn
         int position = helper.getLayoutPosition() - getHeaderLayoutCount();
 
         final ImageView view = helper.getView(R.id.iv_thumb);
-        int pos = getData().indexOf(item);
+
+        CardView.LayoutParams layoutParams = (CardView.LayoutParams) view.getLayoutParams();
         if (mIsMore) {
             helper.setVisible(R.id.tv_update_date, false);
         } else {
             if (position == 0) {
                 helper.setVisible(R.id.tv_update_date, true);
+                layoutParams.height = CardView.LayoutParams.WRAP_CONTENT;
             } else {
                 helper.setVisible(R.id.tv_update_date, false);
+                layoutParams.height = UIUtil.dip2px(mContext, 110);
             }
+            view.setLayoutParams(layoutParams);
         }
 
         Drawable drawable = new BitmapDrawable(mContext.getResources(), BitmapUtils.transformRoundDrawable(mContext, R.mipmap.pic_example, 5));
-        if (mIsMore) {
-            view.setTag(R.id.img_id, item.getImg());
-            if (view.getTag(R.id.img_id).equals(item.getImg())) {
-                Glide.with(mContext).load(item.getImg()).apply(new RequestOptions()
-                        .transform(new GlideRoundTransform(mContext, pos, true))
-                        .diskCacheStrategy(DiskCacheStrategy.DATA).placeholder(R.mipmap.base_loading).error(drawable)).into(view);
-            } else {
-                Glide.with(mContext).clear(view);
-            }
-        } else {
-            Glide.with(mContext).load(item.getImg()).apply(new RequestOptions()
-                    .transform(new GlideRoundTransform(mContext, pos, false))
-                    .diskCacheStrategy(DiskCacheStrategy.DATA).placeholder(R.mipmap.base_loading).error(drawable)).into(view);
-        }
+
+        Glide.with(mContext).load(item.getImg()).apply(new RequestOptions().diskCacheStrategy(DiskCacheStrategy.DATA)
+                .skipMemoryCache(true).error(drawable).dontAnimate()).thumbnail(0.1f).into(view);
 
 
     }

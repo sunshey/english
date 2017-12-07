@@ -1,8 +1,10 @@
 package com.yc.english.news.view.activity;
 
 import android.content.Intent;
+import android.graphics.Typeface;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
+import android.support.annotation.MainThread;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
@@ -15,10 +17,14 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.blankj.utilcode.util.LogUtils;
-import com.blankj.utilcode.util.ScreenUtils;
+import com.blankj.utilcode.util.NetworkUtils;
 import com.blankj.utilcode.util.TimeUtils;
 import com.bumptech.glide.Glide;
 import com.example.comm_recyclviewadapter.BaseItemDecoration;
+import com.hwangjr.rxbus.annotation.Subscribe;
+import com.hwangjr.rxbus.annotation.Tag;
+import com.hwangjr.rxbus.thread.EventThread;
+import com.jakewharton.rxbinding.view.RxView;
 import com.kk.securityhttp.net.contains.HttpConfig;
 import com.yc.english.R;
 import com.yc.english.base.view.AlertDialog;
@@ -26,8 +32,11 @@ import com.yc.english.base.view.BaseToolBar;
 import com.yc.english.base.view.FullScreenActivity;
 import com.yc.english.base.view.SharePopupWindow;
 import com.yc.english.base.view.StateView;
+import com.yc.english.group.constant.BusAction;
 import com.yc.english.group.view.activitys.GroupPictureDetailActivity;
 import com.yc.english.main.hepler.UserInfoHelper;
+import com.yc.english.main.model.domain.Constant;
+import com.yc.english.main.model.domain.UserInfo;
 import com.yc.english.news.adapter.NewsDetailAdapter;
 import com.yc.english.news.bean.CourseInfoWrapper;
 import com.yc.english.news.contract.NewsDetailContract;
@@ -39,19 +48,21 @@ import com.yc.english.weixin.model.domain.CourseInfo;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 import butterknife.BindView;
-import fm.jiecao.jcvideoplayer_lib.JCVideoPlayer;
-import fm.jiecao.jcvideoplayer_lib.JCVideoPlayerStandard;
+import cn.jzvd.JZVideoPlayer;
+import cn.jzvd.JZVideoPlayerStandard;
+import rx.functions.Action1;
 
 /**
  * Created by wanglin  on 2017/9/6 08:32.
  */
 
-public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> implements NewsDetailContract.View, View.OnClickListener {
+public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> implements NewsDetailContract.View {
     private static final String TAG = "NewsDetailActivity";
     @BindView(R.id.mJCVideoPlayer)
-    JCVideoPlayerStandard mJCVideoPlayer;
+    JZVideoPlayerStandard mJCVideoPlayer;
     @BindView(R.id.webView)
     WebView webView;
     @BindView(R.id.mLinearLayoutMore)
@@ -76,13 +87,14 @@ public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> 
     @BindView(R.id.mTextViewFrom)
     TextView mTextViewFrom;
 
+
     private NewsDetailAdapter newsDetailAdapter;
     private String title;
-    private int screenHeight;
     private String id;
     private long startTime;
     private CourseInfo currentCourseInfo;
-    private boolean isPlay = true;
+
+    private UserInfo userInfo;
 
     @Override
     public void init() {
@@ -92,7 +104,6 @@ public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> 
         mToolbar.showNavigationIcon();
         mToolbar.setMenuTitleColor(R.color.black_333333);
 
-//        mToolbar.setTitleSize(20);
         startTime = System.currentTimeMillis();
 
         if (getIntent() != null) {
@@ -105,12 +116,15 @@ public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> 
             mPresenter.getWeixinInfo(id);
         }
 
-        screenHeight = ScreenUtils.getScreenHeight();
+
+        mTextViewTitle.setTypeface(Typeface.DEFAULT_BOLD);
 
         initRecycleView();
         initListener();
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        mSensorEventListener = new JCVideoPlayer.JCAutoFullscreenListener();
+        mSensorEventListener = new JZVideoPlayer.JZAutoFullscreenListener();
+        userInfo = UserInfoHelper.getUserInfo();
+
     }
 
 
@@ -150,10 +164,8 @@ public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> 
         nestedScrollView.setOnScrollChangeListener(new NewsScrollView.onScrollChangeListener() {
             @Override
             public void onScrollChange(int l, int t, int oldl, int oldt) {
-                if (t > screenHeight / 2) {
+                if (t > mTextViewTitle.getMeasuredHeight()) {
                     mToolbar.setTitle(title);
-
-
                 } else {
                     mToolbar.setTitle("");
                 }
@@ -166,7 +178,7 @@ public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> 
 
         mRecyclerView.setHasFixedSize(true);
         mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
-        newsDetailAdapter = new NewsDetailAdapter(this, null);
+        newsDetailAdapter = new NewsDetailAdapter(null);
         mRecyclerView.setAdapter(newsDetailAdapter);
 
         RecyclerView.ItemDecoration itemDecoration = new BaseItemDecoration(this);
@@ -174,19 +186,6 @@ public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> 
 
     }
 
-
-    private String makeBody(String data) {
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("<html><head><meta charset=\"utf-8\" /><meta content=\"yes\" name=\"apple-mobile-web-app-capable\" />\n" +
-                "    <meta content=\"yes\" name=\"apple-touch-fullscreen\" />\n" +
-                "    <meta content=\"telephone=no,email=no\" name=\"format-detection\" />\n" +
-                "    <meta name=\"App-Config\" content=\"fullscreen=yes,useHistoryState=yes,transition=yes\" /><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no\" />");
-        sb.append("<style> html,body{overflow:hidden;} img { width:100%; height:auto; overflow:hidden;}</style></head><body>");
-        sb.append(data);
-        sb.append("</body></html>");
-        return sb.toString();
-    }
 
     private void initWebView(final CourseInfoWrapper data) {
 
@@ -207,7 +206,7 @@ public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> 
         webSettings.setDefaultTextEncodingName("utf-8");//设置编码格式
         webSettings.setBlockNetworkImage(true);//设置是否加载网络图片 true 为不加载 false 为加载
 
-        String body = makeBody(data.getInfo().getBody());
+        String body = data.getInfo().getBody();
         webView.loadDataWithBaseURL(null, body, "text/html", "utf-8", null);
 
 
@@ -268,17 +267,61 @@ public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> 
     private void playVideo(String url, String imgUrl) {
         mJCVideoPlayer.setVisibility(View.VISIBLE);
         mMediaPlayerView.setVisibility(View.GONE);
-        mJCVideoPlayer.setUp(url, JCVideoPlayerStandard.SCREEN_LAYOUT_NORMAL);
+        mJCVideoPlayer.setUp(url, JZVideoPlayerStandard.SCREEN_WINDOW_NORMAL);
         Glide.with(this).load(imgUrl).into(mJCVideoPlayer.thumbImageView);
-        mJCVideoPlayer.battery_level.setVisibility(View.GONE);
         mJCVideoPlayer.backButton.setVisibility(View.GONE);
+        mJCVideoPlayer.tinyBackImageView.setVisibility(View.GONE);
+        mJCVideoPlayer.batteryLevel.setVisibility(View.GONE);
 
+        if (judgeVip()) {
+            if (NetworkUtils.getNetworkType() == NetworkUtils.NetworkType.NETWORK_WIFI)
+                mJCVideoPlayer.startVideo();
+            else {
+                click();
+            }
+        } else {
+            click();
+        }
+
+
+    }
+
+    public void click() {
+
+        RxView.clicks(mJCVideoPlayer.thumbImageView).throttleFirst(1000, TimeUnit.MICROSECONDS).subscribe(new Action1<Void>() {
+            @Override
+            public void call(Void aVoid) {
+                startOrBuy();
+            }
+        });
+        RxView.clicks(mJCVideoPlayer.startButton).throttleFirst(1000, TimeUnit.MICROSECONDS).subscribe(new Action1<Void>() {
+            @Override
+            public void call(Void aVoid) {
+                startOrBuy();
+            }
+        });
+    }
+
+    private void startOrBuy() {
+        if (userInfo != null) {
+            if (judgeVip()) {
+                mJCVideoPlayer.startVideo();
+            } else {
+                showBuyDialog();
+            }
+        } else {
+            UserInfoHelper.isGotoLogin(NewsDetailActivity.this);
+        }
+    }
+
+    private boolean judgeVip() {
+        boolean isPlay = true;
         if (currentCourseInfo != null) {
             if (currentCourseInfo.getIsPay() == 0) {
                 //未购买
                 if (currentCourseInfo.getUserHas() == 0) {
-                    if (UserInfoHelper.getUserInfo() != null) {
-                        if (UserInfoHelper.getUserInfo().getIsVip() == 0) {
+                    if (userInfo != null) {
+                        if (userInfo.getIsVip() == 0) {
                             isPlay = false;
                         } else {
                             if (currentCourseInfo.getIs_vip() == 0) {
@@ -294,9 +337,7 @@ public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> 
             }
         }
 
-        mJCVideoPlayer.thumbImageView.setOnClickListener(this);
-        mJCVideoPlayer.startButton.setOnClickListener(this);
-
+        return isPlay;
     }
 
 
@@ -306,7 +347,7 @@ public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> 
         currentCourseInfo = data.getInfo();
         initData(currentCourseInfo);
         if (data.getRecommend() != null && data.getRecommend().size() > 0) {
-            newsDetailAdapter.setData(data.getRecommend());
+            newsDetailAdapter.setNewData(data.getRecommend());
             mLlRecommend.setVisibility(View.VISIBLE);
         } else {
             mLlRecommend.setVisibility(View.GONE);
@@ -340,34 +381,29 @@ public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> 
 
     private ArrayList<String> imageList = new ArrayList<>();
 
-    @Override
-    public void onClick(View v) {
-        if (UserInfoHelper.getUserInfo() != null) {
-            if (isPlay) {
-                mJCVideoPlayer.startVideo();
-            } else {
-                final AlertDialog alertDialog = new AlertDialog(NewsDetailActivity.this);
-                alertDialog.setDesc("未购买此课程，是否马上购买？");
-                alertDialog.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        alertDialog.dismiss();
 
-                        currentCourseInfo.setUserId(UserInfoHelper.getUserInfo().getUid());
-                        Intent intent = new Intent(NewsDetailActivity.this, ConfirmOrderActivity.class);
-                        ArrayList<CourseInfo> goodsList = new ArrayList<>();
-                        goodsList.add(currentCourseInfo);
-                        intent.putExtra("total_price", currentCourseInfo.getMPrice());
-                        intent.putParcelableArrayListExtra("goods_list", goodsList);
-                        startActivity(intent);
+    private void showBuyDialog() {
 
-                    }
-                });
-                alertDialog.show();
+        final AlertDialog alertDialog = new AlertDialog(NewsDetailActivity.this);
+        alertDialog.setDesc("未购买此课程，是否马上购买？");
+        alertDialog.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                alertDialog.dismiss();
+                currentCourseInfo.setUserId(UserInfoHelper.getUserInfo().getUid());
+                Intent intent = new Intent(NewsDetailActivity.this, ConfirmOrderActivity.class);
+                ArrayList<CourseInfo> goodsList = new ArrayList<>();
+                goodsList.add(currentCourseInfo);
+                intent.putExtra("total_price", currentCourseInfo.getMPrice());
+                intent.putParcelableArrayListExtra("goods_list", goodsList);
+                startActivity(intent);
+
+
             }
-        } else {
-            UserInfoHelper.isGotoLogin(NewsDetailActivity.this);
-        }
+        });
+        alertDialog.show();
+
     }
 
     private class JavascriptInterface {
@@ -387,7 +423,18 @@ public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> 
 
     }
 
-    private JCVideoPlayer.JCAutoFullscreenListener mSensorEventListener;
+    @Subscribe(
+            thread = EventThread.MAIN_THREAD,
+            tags = {
+                    @Tag(Constant.COMMUNITY_ACTIVITY_REFRESH)
+            }
+    )
+    public void login(String loginInfo) {
+        userInfo = UserInfoHelper.getUserInfo();
+        judgeVip();
+    }
+
+    private JZVideoPlayer.JZAutoFullscreenListener mSensorEventListener;
 
     private SensorManager mSensorManager;
 
@@ -403,9 +450,9 @@ public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> 
     @Override
     protected void onPause() {
         super.onPause();
-        JCVideoPlayer.releaseAllVideos();
+        JZVideoPlayer.releaseAllVideos();
         mSensorManager.unregisterListener(mSensorEventListener);
-        JCVideoPlayer.clearSavedProgress(this, null);
+        JZVideoPlayer.clearSavedProgress(this, null);
     }
 
     @Override
@@ -422,7 +469,7 @@ public class NewsDetailActivity extends FullScreenActivity<NewsDetailPresenter> 
 
     @Override
     public void onBackPressed() {
-        if (JCVideoPlayer.backPress()) {
+        if (JZVideoPlayer.backPress()) {
             return;
         }
         super.onBackPressed();

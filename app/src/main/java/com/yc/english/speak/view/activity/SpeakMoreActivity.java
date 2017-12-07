@@ -42,7 +42,6 @@ public class SpeakMoreActivity extends FullScreenActivity<SpeakEnglishListPresen
     private SpeakAndReadInfo speakAndReadInfo;
     private SpeakEnglishItemAdapter speakEnglishItemAdapter;
     private int page = 1;
-    private int page_size = 20;
     private int type;
 
     @Override
@@ -147,17 +146,19 @@ public class SpeakMoreActivity extends FullScreenActivity<SpeakEnglishListPresen
 
     @Override
     public void shoReadAndSpeakMorList(List<SpeakAndReadInfo> list, int page, boolean isFitst) {
-        if (page == 1) {
-            speakEnglishItemAdapter.setNewData(list.get(0).getData());
 
-        } else {
-            speakEnglishItemAdapter.addData(list.get(0).getData());
-        }
-        if (list.size() == page_size) {
+        if (list != null && list.size() > 0) {
+            if (page == 1) {
+                speakEnglishItemAdapter.setNewData(list.get(0).getData());
+
+            } else {
+                speakEnglishItemAdapter.addData(list.get(0).getData());
+            }
             speakEnglishItemAdapter.loadMoreComplete();
         } else {
             speakEnglishItemAdapter.loadMoreEnd();
         }
+
 
         if (swipeRefreshLayout.isRefreshing()) {
             swipeRefreshLayout.setRefreshing(false);

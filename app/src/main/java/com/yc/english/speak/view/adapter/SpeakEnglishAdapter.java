@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
+import android.view.animation.RotateAnimation;
 
 import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.BaseViewHolder;
@@ -86,6 +87,7 @@ public class SpeakEnglishAdapter extends BaseQuickAdapter<SpeakAndReadInfo, Base
     }
 
     private void initListener(final SpeakAndReadInfo info, SpeakEnglishItemAdapter itemAdapter) {
+
         itemAdapter.setOnItemChildClickListener(new OnItemChildClickListener() {
             @Override
             public boolean onItemChildClick(BaseQuickAdapter adapter, View view, int position) {
@@ -96,15 +98,12 @@ public class SpeakEnglishAdapter extends BaseQuickAdapter<SpeakAndReadInfo, Base
                 Intent intent = null;
                 if (mType == 1) {//说英语
                     intent = new Intent(mContext, SpeakEnglishActivity.class);
-                    intent.putExtra("itemInfo", speakAndReadItemInfo);
-                    intent.putParcelableArrayListExtra("infoList", (ArrayList) mData);
                 } else if (mType == 2) {//听英语
                     intent = new Intent(mContext, ListenEnglishActivity.class);
-                    intent.putExtra("itemInfo", speakAndReadItemInfo);
-                    intent.putParcelableArrayListExtra("infoList", (ArrayList) mData);
                 }
+                intent.putExtra("itemInfo", speakAndReadItemInfo);
+                intent.putParcelableArrayListExtra("infoList", (ArrayList) mData);
                 mContext.startActivity(intent);
-
                 return false;
 
             }
