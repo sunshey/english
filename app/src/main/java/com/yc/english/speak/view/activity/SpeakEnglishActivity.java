@@ -230,8 +230,10 @@ public class SpeakEnglishActivity extends FullScreenActivity<SpeakEnglishListPre
 
                 if (view.getId() == R.id.iv_speak_tape && !isTape && !isPlayTape && !isPlay) {
                     View currentView = mLinearLayoutManager.findViewByPosition(position);
-                    currentView.findViewById(R.id.speak_tape_layout).setVisibility(View.VISIBLE);
-                    progressBar = (CircularProgressBar) currentView.findViewById(R.id.progress_bar);
+                    if (currentView != null) {
+                        currentView.findViewById(R.id.speak_tape_layout).setVisibility(View.VISIBLE);
+                        progressBar = (CircularProgressBar) currentView.findViewById(R.id.progress_bar);
+                    }
                     view.setVisibility(View.GONE);
                     initTask();
                     timer.schedule(task, 200, 150);
@@ -241,7 +243,9 @@ public class SpeakEnglishActivity extends FullScreenActivity<SpeakEnglishListPre
 
                 if (view.getId() == R.id.speak_tape_layout && isTape && !isPlayTape && !isPlay) {
                     View currentView = mLinearLayoutManager.findViewByPosition(position);
-                    currentView.findViewById(R.id.iv_speak_tape).setVisibility(View.VISIBLE);
+                    if (currentView != null) {
+                        currentView.findViewById(R.id.iv_speak_tape).setVisibility(View.VISIBLE);
+                    }
                     view.setVisibility(View.GONE);
                     stopTask();
                     tapeStop();
@@ -251,7 +255,9 @@ public class SpeakEnglishActivity extends FullScreenActivity<SpeakEnglishListPre
                 if (view.getId() == R.id.iv_play_self_speak && !isPlayTape && !isTape && !isPlay && listenSuccess) {
                     if (audioFile != null && audioFile.exists()) {
                         View currentView = mLinearLayoutManager.findViewByPosition(position);
-                        playProgressBar = (CircularProgressBar) currentView.findViewById(R.id.play_progress_bar);
+                        if (currentView != null) {
+                            playProgressBar = (CircularProgressBar) currentView.findViewById(R.id.play_progress_bar);
+                        }
                         currentView.findViewById(R.id.play_speak_tape_layout).setVisibility(View.VISIBLE);
                         view.setVisibility(View.GONE);
                         playTape(position);

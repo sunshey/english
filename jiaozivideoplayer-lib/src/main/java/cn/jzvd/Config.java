@@ -6,6 +6,8 @@ import android.os.Environment;
 public class Config {
 
     public static String getDefaultCacheDir(Context context) {
+
+
         String cache_dir = "";
         if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED) || !Environment.isExternalStorageRemovable()) {
             cache_dir = Environment.getExternalStorageDirectory().getAbsolutePath();
