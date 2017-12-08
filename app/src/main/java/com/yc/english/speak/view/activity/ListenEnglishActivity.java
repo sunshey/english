@@ -1,7 +1,11 @@
 package com.yc.english.speak.view.activity;
 
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.graphics.Bitmap;
+import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
@@ -18,6 +22,7 @@ import com.blankj.utilcode.util.StringUtils;
 import com.blankj.utilcode.util.TimeUtils;
 import com.blankj.utilcode.util.ToastUtils;
 import com.bumptech.glide.Glide;
+import com.jakewharton.rxbinding.view.RxView;
 import com.liulishuo.filedownloader.BaseDownloadTask;
 import com.liulishuo.filedownloader.FileDownloadListener;
 import com.liulishuo.filedownloader.FileDownloader;
@@ -38,8 +43,10 @@ import com.yc.english.speak.view.wdigets.LyricView;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import butterknife.BindView;
+import rx.functions.Action1;
 
 /**
  * Created by admin on 2017/10/19.
@@ -130,6 +137,9 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
         listenList = (ArrayList) intent.getParcelableArrayListExtra("infoList");
         fileName = currentItemInfo.getId();
 
+        outDataPosition = currentItemInfo.getOutPos();
+        innerDataPosition = currentItemInfo.getInnerPos();
+
         setListener();
         FileDownloader.setup(this);
         mPresenter = new ListenEnglishPresenter(this, this);
@@ -138,63 +148,83 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
     }
 
     public boolean getPrevInfo() {
-        innerDataPosition--;
-        LogUtils.e("pre position" + innerDataPosition + "  out position:" + outDataPosition);
-        if (innerDataPosition < 0) {
-            outDataPosition--;
-            if (outDataPosition < 0) {
-                isPrevOver = true;
-            } else {
-                if (outDataPosition > -1 && listenList.get(outDataPosition).getData() != null) {
-                    innerDataPosition = listenList.get(outDataPosition).getData().size() - 1;
 
+        LogUtils.e("outDataPosition getPrevInfo: " + outDataPosition + "--innerDataPosition--" + innerDataPosition);
+        if (!isPrevOver) {
+            innerDataPosition--;
+            if (innerDataPosition < 0) {
+                outDataPosition--;
+                if (outDataPosition < 0) {
+                    outDataPosition = 0;
+                    innerDataPosition = 0;
+                    isPrevOver = true;
+                    isNextOver = false;
+                } else {
+                    if (outDataPosition > -1 && listenList.get(outDataPosition).getData() != null) {
+                        innerDataPosition = listenList.get(outDataPosition).getData().size() - 1;
+
+                        SpeakAndReadItemInfo speakAndReadItemInfo = listenList.get(outDataPosition).getData().get(innerDataPosition);
+                        fileName = speakAndReadItemInfo.getId();
+                        currentAudioUrl = speakAndReadItemInfo.getMp3();
+                        currentAudioLrcUrl = speakAndReadItemInfo.getWord_file();
+                    } else {
+                        isPrevOver = true;
+                        isNextOver = false;
+                    }
+                }
+            } else {
+                if (outDataPosition > -1 && outDataPosition < listenList.size() && innerDataPosition > -1 && innerDataPosition < listenList.get(outDataPosition).getData().size()) {
                     SpeakAndReadItemInfo speakAndReadItemInfo = listenList.get(outDataPosition).getData().get(innerDataPosition);
                     fileName = speakAndReadItemInfo.getId();
                     currentAudioUrl = speakAndReadItemInfo.getMp3();
                     currentAudioLrcUrl = speakAndReadItemInfo.getWord_file();
+                    isNextOver = false;
                 } else {
                     isPrevOver = true;
+                    isNextOver = false;
                 }
-            }
-        } else {
-            if (outDataPosition < listenList.size()) {
-                SpeakAndReadItemInfo speakAndReadItemInfo = listenList.get(outDataPosition).getData().get(innerDataPosition);
-                fileName = speakAndReadItemInfo.getId();
-                currentAudioUrl = speakAndReadItemInfo.getMp3();
-                currentAudioLrcUrl = speakAndReadItemInfo.getWord_file();
             }
         }
         return isPrevOver;
     }
 
     public boolean getNextInfo() {
-        innerDataPosition++;
-        LogUtils.e("next position" + innerDataPosition + "  out position:" + outDataPosition);
-        if (outDataPosition < listenList.size() && innerDataPosition >= listenList.get(outDataPosition).getData().size()) {
-            outDataPosition++;
-            if (outDataPosition >= listenList.size()) {
-                isNextOver = true;
-            } else {
-                if (outDataPosition > -1 && listenList.get(outDataPosition).getData() != null) {
-                    innerDataPosition = 0;
+        LogUtils.e("outDataPosition getNextInfo: " + outDataPosition + "--innerDataPosition--" + innerDataPosition);
+        if (!isNextOver) {
+            innerDataPosition++;
+            if (outDataPosition > -1 && innerDataPosition >= listenList.get(outDataPosition).getData().size()) {
+                outDataPosition++;
+                if (outDataPosition >= listenList.size()) {
+                    outDataPosition = listenList.size() - 1;
+                    innerDataPosition = listenList.get(outDataPosition).getData().size() - 1;
+                    isNextOver = true;
+                    isPrevOver = false;
+                } else {
+                    if (listenList.get(outDataPosition).getData() != null) {
+                        innerDataPosition = 0;
 
+                        SpeakAndReadItemInfo speakAndReadItemInfo = listenList.get(outDataPosition).getData().get(innerDataPosition);
+                        fileName = speakAndReadItemInfo.getId();
+                        currentAudioUrl = speakAndReadItemInfo.getMp3();
+                        currentAudioLrcUrl = speakAndReadItemInfo.getWord_file();
+                    } else {
+                        isNextOver = true;
+                        isPrevOver = false;
+                    }
+                }
+            } else {
+                if (outDataPosition > -1 && outDataPosition < listenList.size() && innerDataPosition > -1 && innerDataPosition < listenList.get(outDataPosition).getData().size()) {
                     SpeakAndReadItemInfo speakAndReadItemInfo = listenList.get(outDataPosition).getData().get(innerDataPosition);
                     fileName = speakAndReadItemInfo.getId();
                     currentAudioUrl = speakAndReadItemInfo.getMp3();
                     currentAudioLrcUrl = speakAndReadItemInfo.getWord_file();
+                    isPrevOver = false;
                 } else {
                     isNextOver = true;
+                    isPrevOver = false;
                 }
             }
-        } else {
-            if (outDataPosition < listenList.size()) {
-                SpeakAndReadItemInfo speakAndReadItemInfo = listenList.get(outDataPosition).getData().get(innerDataPosition);
-                fileName = speakAndReadItemInfo.getId();
-                currentAudioUrl = speakAndReadItemInfo.getMp3();
-                currentAudioLrcUrl = speakAndReadItemInfo.getWord_file();
-            }
         }
-
         return isNextOver;
     }
 
@@ -259,6 +289,30 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
 
     @Override
     public void setListener() {
+
+//        RxView.clicks(mPrev).throttleFirst(500, TimeUnit.MICROSECONDS).subscribe(new Action1<Void>() {
+//            @Override
+//            public void call(Void aVoid) {
+//                if (!getPrevInfo()) {
+//                    downAudioFile();
+//                } else {
+//                    ToastUtils.showLong("暂无更多信息");
+//                }
+//            }
+//        });
+//
+//        RxView.clicks(mNext).throttleFirst(500, TimeUnit.MICROSECONDS).subscribe(new Action1<Void>() {
+//            @Override
+//            public void call(Void aVoid) {
+//                if (!getNextInfo()) {
+//                    downAudioFile();
+//                } else {
+//                    ToastUtils.showLong("暂无更多信息");
+//                }
+//            }
+//        });
+
+
         mPrev.setOnClickListener(ListenEnglishActivity.this);
         mPlayPause.setOnClickListener(ListenEnglishActivity.this);
         mNext.setOnClickListener(ListenEnglishActivity.this);
@@ -382,6 +436,8 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
                             mIvLoading.setVisibility(View.GONE);
                             mLyricViewPresenter = new LyricViewPresenter(ListenEnglishActivity.this, ListenEnglishActivity.this, audioFile.getAbsolutePath());
                             startService(mPlayService);
+                           // bindService(mPlayService, serviceConnection, Context.BIND_AUTO_CREATE);
+
                         }
 
                         @Override
@@ -407,6 +463,7 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
                 isDownSuccess = true;
 
                 startService(mPlayService);
+//                bindService(mPlayService, serviceConnection, Context.BIND_AUTO_CREATE);
                 mLyricViewPresenter = new LyricViewPresenter(ListenEnglishActivity.this, ListenEnglishActivity.this, audioFile.getAbsolutePath());
             }
         }
@@ -414,7 +471,9 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
 
     @Override
     public void initLrcView(File lrcFile) {
-        mLyricView.setLyricFile(lrcFile);
+        if (lrcFile != null && lrcFile.exists()) {
+            mLyricView.setLyricFile(lrcFile);
+        }
     }
 
     @Override
@@ -521,6 +580,21 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
         if (mPlayService != null) {
             stopService(mPlayService);
         }
+//        if (serviceConnection != null)
+            //unbindService(serviceConnection);
     }
+
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+
+        }
+    };
 
 }

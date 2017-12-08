@@ -37,12 +37,16 @@ public class MusicPlayService extends Service implements MediaPlayer.OnCompletio
     @Override
     public void onCreate() {
         super.onCreate();
-        mMediaPlayer = new MediaPlayer();
-        mMediaPlayer.setOnCompletionListener(this);
-        mMediaPlayer.setOnPreparedListener(this);
-        mMediaPlayer.setOnErrorListener(this);
-        mMediaPlayer.setOnBufferingUpdateListener(this);
+
         RxBus.get().register(this);
+        if (mMediaPlayer == null) {
+            mMediaPlayer = new MediaPlayer();
+            mMediaPlayer.setOnCompletionListener(this);
+            mMediaPlayer.setOnPreparedListener(this);
+            mMediaPlayer.setOnErrorListener(this);
+            mMediaPlayer.setOnBufferingUpdateListener(this);
+        }
+
     }
 
     @Override
@@ -54,6 +58,7 @@ public class MusicPlayService extends Service implements MediaPlayer.OnCompletio
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
+
         return null;
     }
 
@@ -134,6 +139,7 @@ public class MusicPlayService extends Service implements MediaPlayer.OnCompletio
                 //mMediaPlayer.reset();
                 mMediaPlayer.stop();
                 mMediaPlayer.release();
+                mMediaPlayer = null;
             }
         } catch (Exception e) {
             e.printStackTrace();
