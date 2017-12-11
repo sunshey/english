@@ -1,7 +1,6 @@
 package com.yc.english.speak.view.activity;
 
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.graphics.Bitmap;
@@ -22,11 +21,9 @@ import com.blankj.utilcode.util.StringUtils;
 import com.blankj.utilcode.util.TimeUtils;
 import com.blankj.utilcode.util.ToastUtils;
 import com.bumptech.glide.Glide;
-import com.jakewharton.rxbinding.view.RxView;
 import com.liulishuo.filedownloader.BaseDownloadTask;
 import com.liulishuo.filedownloader.FileDownloadListener;
 import com.liulishuo.filedownloader.FileDownloader;
-import com.mikhaellopez.circularprogressbar.CircularProgressBar;
 import com.yc.english.R;
 import com.yc.english.base.view.FullScreenActivity;
 import com.yc.english.speak.contract.ListenEnglishContract;
@@ -37,16 +34,13 @@ import com.yc.english.speak.model.bean.SpeakAndReadItemInfo;
 import com.yc.english.speak.presenter.ListenEnglishPresenter;
 import com.yc.english.speak.presenter.LyricViewPresenter;
 import com.yc.english.speak.service.MusicPlayService;
-import com.yc.english.speak.view.wdigets.DownloadProgressDialog;
 import com.yc.english.speak.view.wdigets.LyricView;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import butterknife.BindView;
-import rx.functions.Action1;
 
 /**
  * Created by admin on 2017/10/19.
@@ -115,6 +109,8 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
     private boolean isPrevOver;
 
     private boolean isNextOver;
+
+    public static boolean isClick = true;
 
     @Override
     public int getLayoutId() {
@@ -256,34 +252,36 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
 
     @Override
     public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.btn_play_pause:
-                if (isDownSuccess) {
-                    mPlayPresenter.onBtnPlayPausePressed();
-                } else {
-                    if (!isURLValidate) {
-                        ToastUtils.showLong("资源文件下载有误，请重试");
-                        return;
+        if (isClick) {
+            switch (v.getId()) {
+                case R.id.btn_play_pause:
+                    if (isDownSuccess) {
+                        mPlayPresenter.onBtnPlayPausePressed();
+                    } else {
+                        if (!isURLValidate) {
+                            ToastUtils.showLong("资源文件下载有误，请重试");
+                            return;
+                        }
+                        ToastUtils.showLong("资源文件下载中");
                     }
-                    ToastUtils.showLong("资源文件下载中");
-                }
-                break;
-            case R.id.btn_prev:
-                if (!getPrevInfo()) {
-                    downAudioFile();
-                } else {
-                    ToastUtils.showLong("暂无更多信息");
-                }
-                break;
-            case R.id.btn_next:
-                if (!getNextInfo()) {
-                    downAudioFile();
-                } else {
-                    ToastUtils.showLong("暂无更多信息");
-                }
-                break;
-            default:
-                break;
+                    break;
+                case R.id.btn_prev:
+                    if (!getPrevInfo()) {
+                        downAudioFile();
+                    } else {
+                        ToastUtils.showLong("暂无更多信息");
+                    }
+                    break;
+                case R.id.btn_next:
+                    if (!getNextInfo()) {
+                        downAudioFile();
+                    } else {
+                        ToastUtils.showLong("暂无更多信息");
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
@@ -433,10 +431,17 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
                             if (ActivityUtils.isValidContext(ListenEnglishActivity.this)) {
                                 Glide.with(ListenEnglishActivity.this).clear(mIvLoading);
                             }
+
                             mIvLoading.setVisibility(View.GONE);
-                            mLyricViewPresenter = new LyricViewPresenter(ListenEnglishActivity.this, ListenEnglishActivity.this, audioFile.getAbsolutePath());
+
+                            if(mLyricViewPresenter != null){
+                                mLyricViewPresenter.setSongPath(audioFile.getAbsolutePath());
+                            }else{
+                                mLyricViewPresenter = new LyricViewPresenter(ListenEnglishActivity.this, ListenEnglishActivity.this, audioFile.getAbsolutePath());
+                            }
+
                             startService(mPlayService);
-                           // bindService(mPlayService, serviceConnection, Context.BIND_AUTO_CREATE);
+                            // bindService(mPlayService, serviceConnection, Context.BIND_AUTO_CREATE);
 
                         }
 
@@ -464,7 +469,11 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
 
                 startService(mPlayService);
 //                bindService(mPlayService, serviceConnection, Context.BIND_AUTO_CREATE);
-                mLyricViewPresenter = new LyricViewPresenter(ListenEnglishActivity.this, ListenEnglishActivity.this, audioFile.getAbsolutePath());
+                if(mLyricViewPresenter != null){
+                    mLyricViewPresenter.setSongPath(audioFile.getAbsolutePath());
+                }else{
+                    mLyricViewPresenter = new LyricViewPresenter(ListenEnglishActivity.this, ListenEnglishActivity.this, audioFile.getAbsolutePath());
+                }
             }
         }
     }
@@ -571,6 +580,14 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        if (mLyricViewPresenter != null) {
+            mLyricViewPresenter.setPlay(false);
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         Log.d(TAG, "onDestroy");
         super.onDestroy();
@@ -581,7 +598,7 @@ public class ListenEnglishActivity extends FullScreenActivity<ListenEnglishPrese
             stopService(mPlayService);
         }
 //        if (serviceConnection != null)
-            //unbindService(serviceConnection);
+        //unbindService(serviceConnection);
     }
 
     private ServiceConnection serviceConnection = new ServiceConnection() {
