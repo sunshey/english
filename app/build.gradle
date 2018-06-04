@@ -7,13 +7,13 @@ android {
     compileSdkVersion 25
     buildToolsVersion '26.0.2'
     defaultConfig {
-        applicationId "com.yc.english"
+        applicationId "com.yc.junior.english"
 
         minSdkVersion 16
         targetSdkVersion 21
 
-        versionCode 37
-        versionName "1.5.3"
+        versionCode 3
+        versionName "1.1.0"
 
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
@@ -51,16 +51,16 @@ android {
 
     signingConfigs {
         debug {
-            storeFile file('english.jks')
+            storeFile file('junior_english.jks')
             storePassword "123456"
-            keyAlias "english"
+            keyAlias "junior_english"
             keyPassword "123456"
         }
 
         release {
-            storeFile file('english.jks')
+            storeFile file('junior_english.jks')
             storePassword "123456"
-            keyAlias "english"
+            keyAlias "junior_english"
             keyPassword "123456"
         }
     }
