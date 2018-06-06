@@ -385,6 +385,7 @@ public class EngineUtils {
      * @param money
      * @param pay_way_name
      * @param goods_list
+     * @param app_id 1.说说英语 7 新改包名
      * @return
      */
     public static Observable<ResultInfo<OrderInfo>> createOrder(Context context, String title, String price_total, String money, String pay_way_name, List<OrderGood> goods_list) {
@@ -393,7 +394,7 @@ public class EngineUtils {
         UserInfo userInfo = UserInfoHelper.getUserInfo();
         params.put("user_id", userInfo != null ? userInfo.getUid() : "");
         params.put("user_name", userInfo != null ? userInfo.getName() : "");
-        params.put("app_id", String.valueOf(1));
+        params.put("app_id", String.valueOf(7));
         params.put("title", title);
         params.put("price_total", price_total);
         params.put("money", money);
